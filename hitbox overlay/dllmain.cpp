@@ -64,6 +64,7 @@ int keyPressed = 0;
 bool toggleHitbox = true;
 //DWORD pause = 0;
 bool frameStep = false;
+LPD3DXFONT m_font;
 
 
 void DrawRectangle(IDirect3DDevice9* pDevice, const float x1, const float x2, const float y1, const float y2,const float z, D3DCOLOR innerColor, D3DCOLOR outerColor) {
@@ -150,7 +151,61 @@ void drawBox(IDirect3DDevice9* pDevice,int start, int end,DWORD boxAddr,float rx
 		
 	}
 }
-void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue,DWORD state) {
+void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry) {
+	bool isHurt = *(DWORD*)(objData + 0x2d4);
+	int frameNum = 0;
+	int totalFrames = 0;
+	if (isHurt) {
+		totalFrames = *(DWORD*)(objData + 0x2dc);
+		if (totalFrames == -1) {
+			totalFrames = *(BYTE*)(objData + 0x2c8)-1;
+			frameNum = *(DWORD*)(objData + 0x2e0);
+		}
+		else {
+			frameNum = 1 + totalFrames - *(DWORD*)(objData + 0x2d8);
+		}
+	}
+	else {
+		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6ac)) + 0x30);
+		DWORD elem = *(DWORD*)(objData + 0x20);
+		DWORD elemTime = *(DWORD*)(objData + 0x30);
+		int i = 0;
+		bool end = false;
+		while (end == false && (*(DWORD*)(state + i * 0x4) != 0)) {
+			if (i == elem) {
+				frameNum = totalFrames + elemTime;
+			}
+			DWORD fa = (*(DWORD*)(state + i * 0x4) + 0x96);
+			totalFrames += *(BYTE*)fa;//*(BYTE*)(*(DWORD*)(state+i) + 0x96);
+			DWORD ea = (*(DWORD*)(state + i * 0x4) + 0x98);
+			end = *(bool*)ea != 1;//(*(BYTE*)(*(DWORD*)(state + i) + 0x98)) == 2;
+			i++;
+			if (end && i <= elem) {
+				end = false;
+				state += i * 0x4;
+				elem -= i;
+				totalFrames = 1;
+				i = 0;
+			}
+		}
+	}
+	
+	if (m_font == NULL) {
+		D3DXCreateFont(pDevice, 17, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"), &m_font);
+	}
+	D3DCOLOR fontColor = D3DCOLOR_ARGB(255, 255, 255, 255);
+	RECT rct; //Font
+	rct.left = ((rx - 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
+	rct.right = ((rx + 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
+	rct.top = ((10.0f + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
+	rct.bottom = ((60.0f + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
+	int k = 1;
+	
+	std::string text = std::to_string(frameNum)+"/"+ std::to_string(totalFrames);
+	m_font->DrawTextA(NULL, text.c_str(), -1, &rct, DT_CENTER, fontColor);
+
+}
+void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue,DWORD state, bool drawFrame) {
 	signed int *posX, *posX2, *posY, *posY2;
 	BYTE* facing;
 	posX = (signed int*)(objData + 0x64);
@@ -176,7 +231,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue,DWORD state)
 				drawBox(pDevice, 1, (*numBox2 > 8 ? 8 : *numBox2), *boxAddress, rx, ry, *facing, hurtbox_color1, hurtbox_color2);
 			}
 			drawBox(pDevice, 0, 1, *boxAddress, rx, ry, *facing, pushbox_color1, pushbox_color2);
-			if (*numBox2 == 0xC) {
+			if (*numBox2 >= 0xC) {
 				drawBox(pDevice, 0, 1, *boxAddress +0xB*4, rx, ry, *facing, clashbox_color1, clashbox_color2);
 			}
 		}
@@ -185,6 +240,10 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue,DWORD state)
 		DWORD *boxAddress = (DWORD*)(state + 0xc4);
 		drawBox(pDevice, 0, *numBox1, *boxAddress, rx, ry, *facing, hitbox_color1, hitbox_color2);
 	}
+	if (drawFrame) {
+		drawFrameData(pDevice, objData, rx, ry);
+	}
+	
 }
 HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion) {
 	if (!p1_address) {
@@ -196,36 +255,37 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 		DWORD state;
 		DWORD obj_addrress = p1_address;
 		state = *(DWORD*)(obj_addrress + 0x6b0);
-		while (state != 0) {
-			DWORD c;
-			int drawBlue = 1;
-			int armor = 0;
-			c = *(DWORD*)(obj_addrress + 0x5b4);
-			if (c > 0) {
-				c = *(DWORD*)(obj_addrress + 0x5a8);
-				drawBlue = c != 0;
-			}
-			else {
-				c = *(DWORD*)(obj_addrress + 0x2a2);
-				drawBlue = c != 1;
-			}
-			if (drawBlue == 1) {
-				c = *(DWORD*)(obj_addrress + 0x5d8);
+		for (int i = 0; i < 4; i++) {
+			if (state != 0) {
+				DWORD c;
+				int drawBlue = 1;
+				int armor = 0;
+				c = *(DWORD*)(obj_addrress + 0x5b4);
 				if (c > 0) {
-					c = *(DWORD*)(obj_addrress + 0x5cc);
-					if (c != 0) {
-						c = *(DWORD*)(obj_addrress + 0x6b8);
+					c = *(DWORD*)(obj_addrress + 0x5a8);
+					drawBlue = c != 0;
+				}
+				else {
+					c = *(DWORD*)(obj_addrress + 0x2a2);
+					drawBlue = c != 1;
+				}
+				if (drawBlue == 1) {
+					c = *(DWORD*)(obj_addrress + 0x5d8);
+					if (c > 0) {
+						c = *(DWORD*)(obj_addrress + 0x5cc);
 						if (c != 0) {
-							c = *(DWORD*)(obj_addrress + 0x970);
-							armor = !c;
+							c = *(DWORD*)(obj_addrress + 0x6b8);
+							if (c != 0) {
+								c = *(DWORD*)(obj_addrress + 0x970);
+								armor = !c;
+							}
 						}
 					}
 				}
+
+
+				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-
-
-			drawObj(pDevice, obj_addrress, drawBlue+armor, state);
-
 			obj_addrress = obj_addrress + 0xbf0;
 			state = *(DWORD*)(obj_addrress + 0x6b0);
 		}
@@ -254,7 +314,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 						if ((c & 0x100) != 0) {
 							drawBlue = 0;
 						}
-						drawObj(pDevice, obj_addrress, drawBlue, state);
+						drawObj(pDevice, obj_addrress, drawBlue, state,false);
 					}
 				}
 			}
@@ -394,7 +454,6 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	
 	if (GetD3D9Device(d3d9Device, sizeof(d3d9Device)))
 	{
-
 			// Hook Present
 			oPresent = (f_Present)d3d9Device[17];
 
