@@ -159,7 +159,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		totalFrames = *(DWORD*)(objData + 0x2dc);
 		if (totalFrames == -1) {
 			totalFrames = *(BYTE*)(objData + 0x2c8)-1;
-			frameNum = *(DWORD*)(objData + 0x2e0);
+			frameNum = *(BYTE*)(objData + 0x2be);
 		}
 		else {
 			frameNum = 1 + totalFrames - *(DWORD*)(objData + 0x2d8);
