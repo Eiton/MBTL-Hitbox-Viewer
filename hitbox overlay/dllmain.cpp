@@ -29,23 +29,23 @@ DWORD base_address;
 DWORD p1_address;
 DWORD p1_address_offset = 0x00028178;
 int* pause;
-DWORD pause_address_offset = 0x67FAF8;
+DWORD pause_address_offset = 0x680AF8;
 DWORD pause_address2;
-DWORD pause_address2_offset = 0x122202;
+DWORD pause_address2_offset = 0x122982;
 
 DWORD objList_address;
 int* objCount;
-DWORD objList_offset = 0x686424;
-DWORD objCount_offset = 0x686420;
+DWORD objList_offset = 0x6854E4;
+DWORD objCount_offset = 0x6854E0;
 
 int* resolutionX;
 int* resolutionY;
-DWORD resolution_offset = 0x638578;
+DWORD resolution_offset = 0x6395a4;
 
 signed int* cameraPosX;
 signed int* cameraPosY;
 float* cameraZoom;
-DWORD camera_offset = 0x668EC8;
+DWORD camera_offset = 0x669EC8;
 
 
 // asm codes to patch the exe to pause the game
@@ -158,8 +158,8 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 	if (isHurt) {
 		totalFrames = *(DWORD*)(objData + 0x2dc);
 		if (totalFrames == -1) {
-			totalFrames = *(BYTE*)(objData + 0x2c8)-1;
-			frameNum = *(BYTE*)(objData + 0x2be);
+			totalFrames = *(BYTE*)(objData + 0x2c8);
+			frameNum = *(BYTE*)(objData + 0x2be)+1;
 		}
 		else {
 			frameNum = 1 + totalFrames - *(DWORD*)(objData + 0x2d8);
@@ -441,7 +441,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	objList_address = base_address + objList_offset;
 	objCount = (int*)(base_address + objCount_offset);
 
-	resolutionX = (int*)(base_address + resolution_offset + 0x4);
+	resolutionX = (int*)(base_address + resolution_offset + 0x8);
 	resolutionY = (int*)(base_address + resolution_offset);
 
 	cameraPosX = (int*)(base_address + camera_offset);
