@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.29201.188
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hitbox overlay", "hitbox overlay\hitbox overlay.vcxproj", "{0F14E1BC-A90B-4C0A-BD15-D6690E35909C}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dll_loader", "..\dll_loader\dll_loader\dll_loader.vcxproj", "{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{0F14E1BC-A90B-4C0A-BD15-D6690E35909C}.Release|x64.Build.0 = Release|x64
 		{0F14E1BC-A90B-4C0A-BD15-D6690E35909C}.Release|x86.ActiveCfg = Release|Win32
 		{0F14E1BC-A90B-4C0A-BD15-D6690E35909C}.Release|x86.Build.0 = Release|Win32
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Debug|x64.ActiveCfg = Debug|x64
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Debug|x64.Build.0 = Debug|x64
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Debug|x86.ActiveCfg = Debug|Win32
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Debug|x86.Build.0 = Debug|Win32
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Release|x64.ActiveCfg = Release|x64
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Release|x64.Build.0 = Release|x64
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Release|x86.ActiveCfg = Release|Win32
+		{B44CCB5A-CE43-41E6-9E38-854C8F32E97E}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

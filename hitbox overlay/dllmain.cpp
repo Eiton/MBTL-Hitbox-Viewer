@@ -5,6 +5,7 @@
 #include <psapi.h>
 #include "detours.h"
 #include <string>
+#include <stdexcept>
 
 #pragma comment(lib,"d3d9.lib")
 #pragma comment(lib,"d3dx9.lib")
@@ -47,16 +48,26 @@ signed int* cameraPosY;
 float* cameraZoom;
 DWORD camera_offset = 0x669EC8;
 
+DWORD palOffsets[4] = {0x1816EE,0x1816d9,0x1f4311,0x1f7d66};
 
-// asm codes to patch the exe to pause the game
+// asm codes to patch the exe 
+
+//pause
 BYTE je[6] = { 0x0F,0x84,0xC3,0x06,0x00,0x00 };
 BYTE jmp[6] = { 0xE9,0xC4,0x06,0x00,0x00,0x90 };
+
+//pal
+BYTE nop[4] = { 0x90, 0x90, 0x90, 0x90 };
+BYTE pal_a[1] = { 0x1e };
+
+
+
 
 
 // variables for d3d hook
 typedef HRESULT(_stdcall* f_Present)(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion);
 f_Present oPresent;
-void* d3d9Device[119];
+void** vtable;
 
 
 // other global variables
@@ -176,9 +187,9 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 				frameNum = totalFrames + elemTime;
 			}
 			DWORD fa = (*(DWORD*)(state + i * 0x4) + 0x96);
-			totalFrames += *(BYTE*)fa;//*(BYTE*)(*(DWORD*)(state+i) + 0x96);
+			totalFrames += *(BYTE*)fa;
 			DWORD ea = (*(DWORD*)(state + i * 0x4) + 0x98);
-			end = *(bool*)ea != 1;//(*(BYTE*)(*(DWORD*)(state + i) + 0x98)) == 2;
+			end = *(bool*)ea != 1;
 			i++;
 			if (end && i <= elem) {
 				end = false;
@@ -194,7 +205,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		D3DXCreateFont(pDevice, 17, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"), &m_font);
 	}
 	D3DCOLOR fontColor = D3DCOLOR_ARGB(255, 255, 255, 255);
-	RECT rct; //Font
+	RECT rct; 
 	rct.left = ((rx - 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
 	rct.right = ((rx + 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
 	rct.top = ((10.0f + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
@@ -361,70 +372,39 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 }
 
 
-//Simple hook functions that are copied from somewhere
-bool GetD3D9Device(void** pTable, size_t Size)
+//Hook functions copied from AltimorTASDK
+bool get_module_bounds(const std::wstring name, uintptr_t* start, uintptr_t* end)
 {
-
-	if (!pTable)
-	{
+	const auto module = GetModuleHandle(name.c_str());
+	if (module == nullptr)
 		return false;
-	}
 
-
-	IDirect3D9* pD3D = Direct3DCreate9(D3D_SDK_VERSION);
-	if (!pD3D)
-	{
-		return false;
-	}
-
-	D3DPRESENT_PARAMETERS d3dpp = { 0 };
-	d3dpp.SwapEffect = D3DSWAPEFFECT_DISCARD;
-	d3dpp.hDeviceWindow = GetForegroundWindow();
-	d3dpp.Windowed = ((GetWindowLong(d3dpp.hDeviceWindow, GWL_STYLE) & WS_POPUP) != 0) ? FALSE : TRUE;;
-
-
-	IDirect3DDevice9* pDummyDevice = nullptr;
-	HRESULT create_device_ret = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d3dpp.hDeviceWindow, D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dpp, &pDummyDevice);
-
-	if (!pDummyDevice || FAILED(create_device_ret))
-	{
-		//failed
-		pD3D->Release();
-		return false;
-	}
-
-	//CreateDevice successfull
-
-	memcpy(pTable, *reinterpret_cast<void***>(pDummyDevice), Size);
-
-	pDummyDevice->Release();
-	pD3D->Release();
-
+	MODULEINFO info;
+	GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(info));
+	*start = (uintptr_t)(info.lpBaseOfDll);
+	*end = *start + info.SizeOfImage;
 	return true;
 }
-HMODULE GetModule(HANDLE pHandle)
-{
-	HMODULE hMods[1024];
-	DWORD cbNeeded;
-	unsigned int i;
 
-	if (EnumProcessModules(pHandle, hMods, sizeof(hMods), &cbNeeded))
-	{
-		for (i = 0; i < (cbNeeded / sizeof(HMODULE)); i++)
-		{
-			TCHAR szModName[MAX_PATH];
-			if (GetModuleFileNameEx(pHandle, hMods[i], szModName, sizeof(szModName) / sizeof(TCHAR)))
-			{
-				std::wstring wstrModName = szModName;
-				std::wstring wstrModContain = L"MBTL.exe";
-				if (wstrModName.find(wstrModContain) != std::string::npos)
-				{
-					return hMods[i];
-				}
-			}
+// Scan for a byte pattern with a mask in the form of "xxx???xxx".
+uintptr_t sigscan(const std::wstring name, const char* sig, const char* mask)
+{
+	uintptr_t start, end;
+	if (!get_module_bounds(name, &start, &end))
+		throw std::runtime_error("Module not loaded");
+
+	const auto last_scan = end - strlen(mask) + 1;
+
+	for (auto addr = start; addr < last_scan; addr++) {
+		for (size_t i = 0;; i++) {
+			if (mask[i] == '\0')
+				return addr;
+			if (mask[i] != '?' && sig[i] != *(char*)(addr + i))
+				break;
 		}
 	}
-	return nullptr;
+
+	return NULL;
 }
 DWORD WINAPI MainThread(LPVOID hModule)
 {
@@ -432,7 +412,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (!phandle) {
 		exit(0);
 	}
-	base_address = (DWORD)GetModule(phandle);
+	base_address = (DWORD)GetModuleHandle(L"MBTL.exe");
 	if (!base_address) {
 		exit(0);
 	}
@@ -448,27 +428,37 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	cameraPosY = (int*)(base_address + camera_offset + 0x4);
 	cameraZoom = (float*)(base_address + camera_offset + 0xc);
 
+	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[0]), nop, 4, 0);
+	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[1]), pal_a, 1, 0);
+	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[2]), pal_a, 1, 0);
+	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[3]), pal_a, 1, 0);
 
-
-	Sleep(1000);
 	
-	if (GetD3D9Device(d3d9Device, sizeof(d3d9Device)))
+
+	TCHAR szDllPath[MAX_PATH] = { 0 };
+	GetSystemDirectory(szDllPath, MAX_PATH);
+	std::wstring sPath = szDllPath;
+
+	while (!vtable)
 	{
-			// Hook Present
-			oPresent = (f_Present)d3d9Device[17];
-
-			DetourRestoreAfterWith();
-
-			DetourTransactionBegin();
-			DetourUpdateThread(GetCurrentThread());
-
-			DetourAttach(&(LPVOID&)oPresent, Hooked_Present);
-			DetourTransactionCommit();
-
+		Sleep(1000);
+		vtable = *(void***)(sigscan(
+			sPath + L"\\d3d9.dll",
+			"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86",
+			"xx????xx????xx") + 0x2);
 	}
-	else {
-		exit(0);
-	}	
+
+	// Hook Present
+	oPresent = (f_Present)vtable[17];
+
+	DetourRestoreAfterWith();
+
+	DetourTransactionBegin();
+	DetourUpdateThread(GetCurrentThread());
+
+	DetourAttach(&(LPVOID&)oPresent, Hooked_Present);
+	DetourTransactionCommit();
+
 	return false;
 
 }
