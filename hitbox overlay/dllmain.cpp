@@ -6,6 +6,7 @@
 #include "detours.h"
 #include <string>
 #include <stdexcept>
+#include "mINI.h"
 
 #pragma comment(lib,"d3d9.lib")
 #pragma comment(lib,"d3dx9.lib")
@@ -28,27 +29,21 @@ D3DCOLOR hitbox_color2 = D3DCOLOR_ARGB(255, 255, 0, 0);
 HANDLE phandle;
 DWORD base_address;
 DWORD p1_address;
-DWORD p1_address_offset = 0x00028178;
+
 int* pause;
-DWORD pause_address_offset = 0x680AF8;
 DWORD pause_address2;
-DWORD pause_address2_offset = 0x122982;
 
 DWORD objList_address;
 int* objCount;
-DWORD objList_offset = 0x6854E4;
-DWORD objCount_offset = 0x6854E0;
 
 int* resolutionX;
 int* resolutionY;
-DWORD resolution_offset = 0x6395a4;
 
 signed int* cameraPosX;
 signed int* cameraPosY;
 float* cameraZoom;
-DWORD camera_offset = 0x669EC8;
 
-DWORD palOffsets[4] = {0x1816EE,0x1816d9,0x1f4311,0x1f7d66};
+DWORD palNumAddress[2];
 
 // asm codes to patch the exe 
 
@@ -73,7 +68,7 @@ void** vtable;
 // other global variables
 int keyPressed = 0;
 bool toggleHitbox = true;
-//DWORD pause = 0;
+bool unlockColorSlots = false;
 bool frameStep = false;
 LPD3DXFONT m_font;
 
@@ -257,9 +252,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue,DWORD state,
 	
 }
 HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion) {
-	if (!p1_address) {
-		p1_address = *(DWORD*)(base_address + p1_address_offset);
-	}
+	
 	
 	if (toggleHitbox) {
 		pDevice->BeginScene();
@@ -416,25 +409,70 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (!base_address) {
 		exit(0);
 	}
-	pause = (int*)(base_address + pause_address_offset);
-	pause_address2 = base_address + pause_address2_offset;
-	objList_address = base_address + objList_offset;
-	objCount = (int*)(base_address + objCount_offset);
+	p1_address = *(DWORD*)(sigscan(
+		L"MBTL.exe",
+		"\x7D\x27\x69\xc8\xf0\x0b\x00\x00\x81\xc1",
+		"xxxxxxxxxx") + 0xA);
 
-	resolutionX = (int*)(base_address + resolution_offset + 0x8);
-	resolutionY = (int*)(base_address + resolution_offset);
+	pause = (int*)(*(DWORD*)(sigscan(
+		L"MBTL.exe",
+		"\x33\xF6\x3B\x0D",
+		"xxxx") + 0x4));
+	pause_address2 = sigscan(
+		L"MBTL.exe",
+		"\x0F\x84\xc3\x06\x00\x00",
+		"xxxxxx");
 
-	cameraPosX = (int*)(base_address + camera_offset);
-	cameraPosY = (int*)(base_address + camera_offset + 0x4);
-	cameraZoom = (float*)(base_address + camera_offset + 0xc);
 
-	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[0]), nop, 4, 0);
-	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[1]), pal_a, 1, 0);
-	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[2]), pal_a, 1, 0);
-	WriteProcessMemory(phandle, (LPVOID)(base_address + palOffsets[3]), pal_a, 1, 0);
+	objCount = (int*)(*(DWORD*)(sigscan(
+		L"MBTL.exe",
+		"\x8D\x4D\xDC\xA3",
+		"xxxx") + 0x4));
+	objList_address = (DWORD)(objCount) + 0x4;
 
-	
+	DWORD temp = sigscan(
+		L"MBTL.exe",
+		"\x06\x33\xCD\xA1",
+		"xxxx");
+	resolutionY = (int*)(*(DWORD*)(temp + 0x4));
+	resolutionX = (int*)(*(DWORD*)(temp - 0x8));
 
+	cameraPosX = (int*)(*(DWORD*)(sigscan(
+		L"MBTL.exe",
+		"\xC1\xE7\x07\xBE",
+		"xxxx") + 0xA));
+
+	cameraPosY = cameraPosX + 0x1;
+
+	cameraZoom = (float*)(cameraPosX + 0x3);
+
+	mINI::INIFile file("dll_loader.ini");
+	mINI::INIStructure ini;
+	if (file.read(ini)) {
+		if (ini.has("hitbox_viewer")) {
+			if (ini["hitbox_viewer"].has("toggle_hitbox_on_launch")) {
+				toggleHitbox = ini["hitbox_viewer"]["toggle_hitbox_on_launch"] == "1";
+			}
+			if (ini["hitbox_viewer"].has("unlock_additional_color_slots")) {
+				unlockColorSlots = ini["hitbox_viewer"]["unlock_additional_color_slots"] == "1";
+			}
+			if (ini["hitbox_viewer"].has("color_slot_numbers")) {
+				pal_a[0] = std::stoi(ini["hitbox_viewer"]["color_slot_numbers"]);// maximum is 42
+			}
+		}
+	}
+	if (unlockColorSlots) {
+		palNumAddress[0] = sigscan(
+			L"MBTL.exe",
+			"\x0A\x72\x21\x8D",
+			"xxxx");
+		palNumAddress[1] = sigscan(
+			L"MBTL.exe",
+			"\x0A\x7C\x41\x8D",
+			"xxxx");
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[0]), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[1]), pal_a, 1, 0);
+	}
 	TCHAR szDllPath[MAX_PATH] = { 0 };
 	GetSystemDirectory(szDllPath, MAX_PATH);
 	std::wstring sPath = szDllPath;
