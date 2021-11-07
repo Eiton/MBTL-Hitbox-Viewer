@@ -3,7 +3,7 @@
 ## What it does
 * Draw the hitbox
 * Display frame data
-* Unlock the unused color slots for custom palettes (You need the file patching dll to load custom palettes)
+* Unlock the unused color slots for custom palettes (Off by default; Edit dll_loader.ini to turn it on) (You need the file patching dll to load custom palettes)
 
 ## How to use
 * Build the project / Download the files in the releases
