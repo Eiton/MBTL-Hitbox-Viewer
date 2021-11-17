@@ -43,7 +43,7 @@ signed int* cameraPosX;
 signed int* cameraPosY;
 float* cameraZoom;
 
-DWORD palNumAddress[2];
+DWORD palNumAddress[3];
 
 // asm codes to patch the exe 
 
@@ -470,8 +470,14 @@ DWORD WINAPI MainThread(LPVOID hModule)
 			L"MBTL.exe",
 			"\x0A\x7C\x41\x8D",
 			"xxxx");
+		palNumAddress[2] = sigscan(
+			L"MBTL.exe",
+			"\x0A\x1B\xC0\xEB",
+			"xxxx");
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[0]), pal_a, 1, 0);
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[1]), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2]), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2]+7), pal_a, 1, 0);
 	}
 	TCHAR szDllPath[MAX_PATH] = { 0 };
 	GetSystemDirectory(szDllPath, MAX_PATH);
@@ -480,10 +486,30 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	while (!vtable)
 	{
 		Sleep(1000);
+		/*
+		DWORD* ptr = (DWORD*)(sigscan(L"MBTL.exe", "\x89\x7d\xf8\x8b\x47", "xxxxx"));
+		if (ptr != nullptr) {
+			ptr = (DWORD*)*(ptr - 1);
+			if (ptr != nullptr) {
+				ptr = (DWORD*)*(ptr);
+				ptr = (DWORD*)*(ptr + 1);
+				if (ptr != nullptr) {
+					ptr = (DWORD*)*(ptr + 1);
+				}
+			}
+			
+		}
+		if (ptr != nullptr) {
+			vtable = *(void***)ptr;
+		}
+		*/
+		
+		
 		vtable = *(void***)(sigscan(
 			sPath + L"\\d3d9.dll",
 			"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86",
 			"xx????xx????xx") + 0x2);
+			
 	}
 
 	// Hook Present
