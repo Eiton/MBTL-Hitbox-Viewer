@@ -149,8 +149,8 @@ void drawBox(IDirect3DDevice9* pDevice, int start, int end, DWORD boxAddr, float
 			float fx1, fx2, fy1, fy2;
 			fx1 = ((*x1 * (facing == 0 ? 1.0f : -1.0f) + rx) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
 			fx2 = ((*x2 * (facing == 0 ? 1.0f : -1.0f) + rx) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
-			fy1 = ((*y1 + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
-			fy2 = ((*y2 + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
+			fy1 = ((*y1 + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
+			fy2 = ((*y2 + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
 			DrawRectangle(pDevice, fx1, fx2, fy1, fy2, 0, innerColor, outerColor);
 		}
 
@@ -171,7 +171,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		}
 	}
 	else {
-		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6b0)) + 0x30);
+		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6c0)) + 0x30);
 		DWORD elem = *(DWORD*)(objData + 0x20);
 		DWORD elemTime = *(DWORD*)(objData + 0x30);
 		int i = 0;
@@ -194,6 +194,16 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 			}
 		}
 	}
+	BYTE dInvTime = *(BYTE*)(objData + 0x2b8);
+	BYTE tInvTime = *(BYTE*)(objData + 0x2b9);
+	//84 c1 b8 01 00 00
+	BYTE invFlag = *(BYTE*)(objData + 0x52c);
+	BYTE invFlagTime = *(BYTE*)(objData + 0x538);
+
+	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6c4) + 0xAC) + 0xD);
+
+	BYTE invFlag3 = *(BYTE*)(objData + 0x2a3);
+	BYTE invFlag3_2 = *(BYTE*)(objData + 0x2a5);
 
 	if (m_font == NULL) {
 		D3DXCreateFont(pDevice, 17, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"), &m_font);
@@ -202,11 +212,28 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 	RECT rct;
 	rct.left = ((rx - 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
 	rct.right = ((rx + 400.0f) * (*cameraZoom) + 640.0f) * (*resolutionX) / 1280.0f;
-	rct.top = ((10.0f + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
-	rct.bottom = ((60.0f + ry) * (*cameraZoom) + 638.0f) * (*resolutionY) / 720.0f;
+	rct.top = ((10.0f + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
+	rct.bottom = ((60.0f + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
 	int k = 1;
-
-	std::string text = std::to_string(frameNum) + "/" + std::to_string(totalFrames);
+	
+	std::string text = std::to_string(frameNum) + "/" + std::to_string(totalFrames) + '\n';
+	if (dInvTime || invFlag2 == 3 || invFlag2 == 5 || (invFlag3 >= 3 && invFlag3_2 == 0)) {
+		text += "S";//invincible to strikes
+	}
+	else if (invFlag != 0) {
+		if ((invFlag & 1) > 0) {
+			text += "A";//invincible to air attacks
+		}
+		if ((invFlag & 2) > 0) {
+			text += "G";//invincible to ground attacks
+		}
+		if ((invFlag & 8) > 0) {
+			text += "P";//invincible to projectiles
+		}
+	}
+	if (tInvTime || invFlag2 == 4 || invFlag2 == 5 || (invFlag3 >= 3 && invFlag3_2 == 0)) {
+		text += "T";//invincible to throws
+	}
 	m_font->DrawTextA(NULL, text.c_str(), -1, &rct, DT_CENTER, fontColor);
 
 }
@@ -217,7 +244,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 	posY = (signed int*)(objData + 0x68);
 	posX2 = (signed int*)(objData + 0x70);
 	posY2 = (signed int*)(objData + 0x74);
-	facing = (BYTE*)(objData + 0x6A4);
+	facing = (BYTE*)(objData + 0x6B4);
 	BYTE* numBox1;
 	BYTE* numBox2;
 	numBox1 = (BYTE*)(state + 0xb7);
@@ -256,15 +283,15 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 		pDevice->BeginScene();
 		DWORD state;
 		DWORD obj_addrress = p1_address;
-		state = *(DWORD*)(obj_addrress + 0x6b4);
+		state = *(DWORD*)(obj_addrress + 0x6c4);
 		for (int i = 0; i < 4; i++) {
 			if (state != 0) {
 				DWORD c;
 				int drawBlue = 1;
 				int armor = 0;
-				c = *(DWORD*)(obj_addrress + 0x5b8);
+				c = *(DWORD*)(obj_addrress + 0x5c8);
 				if (c > 0) {
-					c = *(DWORD*)(obj_addrress + 0x5ac);
+					c = *(DWORD*)(obj_addrress + 0x5bc);
 					drawBlue = c != 0;
 				}
 				else {
@@ -272,13 +299,13 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 					drawBlue = c != 1;
 				}
 				if (drawBlue == 1) {
-					c = *(DWORD*)(obj_addrress + 0x5dc);
+					c = *(DWORD*)(obj_addrress + 0x5ec);
 					if (c > 0) {
-						c = *(DWORD*)(obj_addrress + 0x5d0);
+						c = *(DWORD*)(obj_addrress + 0x5e0);
 						if (c != 0) {
-							c = *(DWORD*)(obj_addrress + 0x6bc);
+							c = *(DWORD*)(obj_addrress + 0x6cc);
 							if (c != 0) {
-								c = *(DWORD*)(obj_addrress + 0x974);
+								c = *(DWORD*)(obj_addrress + 0x984);
 								armor = !c;
 							}
 						}
@@ -288,20 +315,20 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 
 				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-			obj_addrress = obj_addrress + 0xbf4;
-			state = *(DWORD*)(obj_addrress + 0x6b4);
+			obj_addrress = obj_addrress + 0xc0c;
+			state = *(DWORD*)(obj_addrress + 0x6c4);
 		}
 		if (*objCount > 0) {
 			for (int i = 0; i < *objCount; i++) {
 				obj_addrress = *(DWORD*)(objList_address + i * 4);
 				if (obj_addrress != 0) {
-					state = *(DWORD*)(obj_addrress + 0x6b4);
+					state = *(DWORD*)(obj_addrress + 0x6c4);
 					if (state != 0) {
 						DWORD c;
 						int drawBlue = 1;
-						c = *(DWORD*)(obj_addrress + 0x5b4);
+						c = *(DWORD*)(obj_addrress + 0x5c4);
 						if (c > 0) {
-							c = *(DWORD*)(obj_addrress + 0x5a8);
+							c = *(DWORD*)(obj_addrress + 0x5b8);
 							drawBlue = c != 0;
 						}
 						else {
@@ -420,7 +447,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 		"xxxx") + 0x4));
 	pause_address2 = sigscan(
 		L"MBTL.exe",
-		"\x0F\x84\xc3\x06\x00\x00",
+		"\x0F\x84\x5b\x07\x00\x00",
 		"xxxxxx");
 
 
@@ -432,10 +459,10 @@ DWORD WINAPI MainThread(LPVOID hModule)
 
 	DWORD temp = sigscan(
 		L"MBTL.exe",
-		"\x06\x33\xCD\xA1",
-		"xxxx");
-	resolutionY = (int*)(*(DWORD*)(temp + 0x4));
-	resolutionX = (int*)(*(DWORD*)(temp - 0x8));
+		"\xC7\x47\x10\x00\x00\x00\x00\xff\x35",
+		"xxxxxxxxx");
+	resolutionY = (int*)(*(DWORD*)(temp + 0x9));
+	resolutionX = (int*)(*(DWORD*)(temp + 0x9 + 0x6));
 
 	cameraPosX = (int*)(*(DWORD*)(sigscan(
 		L"MBTL.exe",
