@@ -279,6 +279,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 }
 
 HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion) {
+	
 	if (toggleHitbox) {
 		pDevice->BeginScene();
 		DWORD state;
@@ -289,9 +290,9 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 				DWORD c;
 				int drawBlue = 1;
 				int armor = 0;
-				c = *(DWORD*)(obj_addrress + 0x5c8);
+				c = *(DWORD*)(obj_addrress + 0x5b8);
 				if (c > 0) {
-					c = *(DWORD*)(obj_addrress + 0x5bc);
+					c = *(DWORD*)(obj_addrress + 0x5ac);
 					drawBlue = c != 0;
 				}
 				else {
@@ -350,7 +351,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 		}
 		pDevice->EndScene();
 	}
-
+	
 	if (!GetAsyncKeyState(VK_F5) &&
 		!GetAsyncKeyState(VK_F6) &&
 		!GetAsyncKeyState(VK_F7)) {
@@ -370,7 +371,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 			WriteProcessMemory(phandle, (LPVOID)pause_address2, !*pause ? &je : &jmp, 6, 0);
 		}
 
-	}//disableRender
+	}
 	else {
 
 		if (GetAsyncKeyState(VK_F5) && keyPressed == 1) {
@@ -530,7 +531,6 @@ DWORD WINAPI MainThread(LPVOID hModule)
 			vtable = *(void***)ptr;
 		}
 		*/
-		
 		
 		vtable = *(void***)(sigscan(
 			sPath + L"\\d3d9.dll",
