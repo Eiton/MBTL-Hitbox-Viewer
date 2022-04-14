@@ -202,8 +202,8 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 
 	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6c4) + 0xAC) + 0xD);
 
-	BYTE invFlag3 = *(BYTE*)(objData + 0x2a3);
-	BYTE invFlag3_2 = *(BYTE*)(objData + 0x2a5);
+	BYTE invFlag3 = *(BYTE*)(objData + 0x2a5);
+	BYTE invFlag3_2 = *(BYTE*)(objData + 0x2a7);
 
 	if (m_font == NULL) {
 		D3DXCreateFont(pDevice, 17, 0, FW_BOLD, 0, FALSE, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, TEXT("Arial"), &m_font);
@@ -296,7 +296,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 					drawBlue = c != 0;
 				}
 				else {
-					c = *(DWORD*)(obj_addrress + 0x2a2);
+					c = *(DWORD*)(obj_addrress + 0x2a4);
 					drawBlue = c != 1;
 				}
 				if (drawBlue == 1) {
@@ -316,7 +316,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 
 				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-			obj_addrress = obj_addrress + 0xc0c;
+			obj_addrress = obj_addrress + 0xc14;
 			state = *(DWORD*)(obj_addrress + 0x6c4);
 		}
 		if (*objCount > 0) {
@@ -492,7 +492,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (unlockColorSlots) {
 		palNumAddress[0] = sigscan(
 			L"MBTL.exe",
-			"\x0A\x72\x21\x8D",
+			"\x0A\x72\x30\x8D",
 			"xxxx");
 		palNumAddress[1] = sigscan(
 			L"MBTL.exe",
