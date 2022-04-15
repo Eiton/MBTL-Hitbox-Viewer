@@ -43,17 +43,17 @@ signed int* cameraPosX;
 signed int* cameraPosY;
 float* cameraZoom;
 
-DWORD palNumAddress[3];
+DWORD palNumAddress[5];
 
 // asm codes to patch the exe 
 
 //pause
-BYTE je[6] = { 0x0F,0x84,0xC3,0x06,0x00,0x00 };
-BYTE jmp[6] = { 0xE9,0xC4,0x06,0x00,0x00,0x90 };
+const BYTE je[6] = { 0x0F,0x84,0xC3,0x06,0x00,0x00 };
+const BYTE jmp[6] = { 0xE9,0xC4,0x06,0x00,0x00,0x90 };
 
 //pal
-BYTE nop[4] = { 0x90, 0x90, 0x90, 0x90 };
 BYTE pal_a[1] = { 0x1e };
+BYTE pal_jmp[1] = { 0xeb };
 
 
 
@@ -502,10 +502,25 @@ DWORD WINAPI MainThread(LPVOID hModule)
 			L"MBTL.exe",
 			"\x0A\x1B\xC0\xEB",
 			"xxxx");
+		palNumAddress[3] = sigscan(
+			L"MBTL.exe",
+			"\x0A\x7C\x6F\x8D",
+			"xxxx");
+		palNumAddress[4] = sigscan(
+			L"MBTL.exe",
+			"\x0A\x72\x3B\x8D",
+			"xxxx");
+		palNumAddress[5] = sigscan(
+			L"MBTL.exe",
+			"\x84\xc0\x75\x0A\xC7\x05",
+			"xxxxxx");
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[0]), pal_a, 1, 0);
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[1]), pal_a, 1, 0);
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2]+7), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2] + 7), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[3]), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[4]), pal_a, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[5]+2), pal_jmp, 1, 0);
 	}
 	TCHAR szDllPath[MAX_PATH] = { 0 };
 	GetSystemDirectory(szDllPath, MAX_PATH);
