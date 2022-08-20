@@ -171,7 +171,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		}
 	}
 	else {
-		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6c0)) + 0x30);
+		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6e8)) + 0x30);
 		DWORD elem = *(DWORD*)(objData + 0x20);
 		DWORD elemTime = *(DWORD*)(objData + 0x30);
 		int i = 0;
@@ -197,10 +197,10 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 	BYTE dInvTime = *(BYTE*)(objData + 0x2b8);
 	BYTE tInvTime = *(BYTE*)(objData + 0x2b9);
 	//84 c1 b8 01 00 00
-	BYTE invFlag = *(BYTE*)(objData + 0x52c);
-	BYTE invFlagTime = *(BYTE*)(objData + 0x538);
+	BYTE invFlag = *(BYTE*)(objData + 0x554);
+	BYTE invFlagTime = *(BYTE*)(objData + 0x560);
 
-	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6c4) + 0xAC) + 0xD);
+	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6ec) + 0xAC) + 0xD);
 
 	BYTE invFlag3 = *(BYTE*)(objData + 0x2a5);
 	BYTE invFlag3_2 = *(BYTE*)(objData + 0x2a7);
@@ -215,7 +215,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 	rct.top = ((10.0f + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
 	rct.bottom = ((60.0f + ry) * (*cameraZoom) + 640.0f) * (*resolutionY) / 720.0f;
 	int k = 1;
-	
+
 	std::string text = std::to_string(frameNum) + "/" + std::to_string(totalFrames) + '\n';
 	if (dInvTime || invFlag2 == 3 || invFlag2 == 5 || (invFlag3 >= 3 && invFlag3_2 == 0)) {
 		text += "S";//invincible to strikes
@@ -244,7 +244,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 	posY = (signed int*)(objData + 0x68);
 	posX2 = (signed int*)(objData + 0x70);
 	posY2 = (signed int*)(objData + 0x74);
-	facing = (BYTE*)(objData + 0x6B4);
+	facing = (BYTE*)(objData + 0x6dc);
 	BYTE* numBox1;
 	BYTE* numBox2;
 	numBox1 = (BYTE*)(state + 0xb7);
@@ -279,20 +279,20 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 }
 
 HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion) {
-	
+
 	if (toggleHitbox) {
 		pDevice->BeginScene();
 		DWORD state;
 		DWORD obj_addrress = p1_address;
-		state = *(DWORD*)(obj_addrress + 0x6c4);
+		state = *(DWORD*)(obj_addrress + 0x6ec);
 		for (int i = 0; i < 4; i++) {
 			if (state != 0) {
 				DWORD c;
 				int drawBlue = 1;
 				int armor = 0;
-				c = *(DWORD*)(obj_addrress + 0x5b8);
+				c = *(DWORD*)(obj_addrress + 0x5e0);
 				if (c > 0) {
-					c = *(DWORD*)(obj_addrress + 0x5ac);
+					c = *(DWORD*)(obj_addrress + 0x5d4);
 					drawBlue = c != 0;
 				}
 				else {
@@ -300,13 +300,13 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 					drawBlue = c != 1;
 				}
 				if (drawBlue == 1) {
-					c = *(DWORD*)(obj_addrress + 0x5ec);
+					c = *(DWORD*)(obj_addrress + 0x614);
 					if (c > 0) {
-						c = *(DWORD*)(obj_addrress + 0x5e0);
+						c = *(DWORD*)(obj_addrress + 0x608);
 						if (c != 0) {
-							c = *(DWORD*)(obj_addrress + 0x6cc);
+							c = *(DWORD*)(obj_addrress + 0x6f4);
 							if (c != 0) {
-								c = *(DWORD*)(obj_addrress + 0x984);
+								c = *(DWORD*)(obj_addrress + 0x9ac);
 								armor = !c;
 							}
 						}
@@ -316,20 +316,20 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 
 				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-			obj_addrress = obj_addrress + 0xc14;
-			state = *(DWORD*)(obj_addrress + 0x6c4);
+			obj_addrress = obj_addrress + 0xc3c;
+			state = *(DWORD*)(obj_addrress + 0x6ec);
 		}
 		if (*objCount > 0) {
 			for (int i = 0; i < *objCount; i++) {
 				obj_addrress = *(DWORD*)(objList_address + i * 4);
 				if (obj_addrress != 0) {
-					state = *(DWORD*)(obj_addrress + 0x6c4);
+					state = *(DWORD*)(obj_addrress + 0x6ec);
 					if (state != 0) {
 						DWORD c;
 						int drawBlue = 1;
-						c = *(DWORD*)(obj_addrress + 0x5c4);
+						c = *(DWORD*)(obj_addrress + 0x5ec);
 						if (c > 0) {
-							c = *(DWORD*)(obj_addrress + 0x5b8);
+							c = *(DWORD*)(obj_addrress + 0x5e0);
 							drawBlue = c != 0;
 						}
 						else {
@@ -351,7 +351,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 		}
 		pDevice->EndScene();
 	}
-	
+
 	if (!GetAsyncKeyState(VK_F5) &&
 		!GetAsyncKeyState(VK_F6) &&
 		!GetAsyncKeyState(VK_F7)) {
@@ -437,6 +437,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (!base_address) {
 		exit(0);
 	}
+	
 	p1_address = *(DWORD*)(sigscan(
 		L"MBTL.exe",
 		"\x7D\x27\x69\xc8",
@@ -473,7 +474,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	cameraPosY = cameraPosX + 0x1;
 
 	cameraZoom = (float*)(cameraPosX + 0x3);
-
+	
 	mINI::INIFile file("dll_loader.ini");
 	mINI::INIStructure ini;
 	if (file.read(ini)) {
@@ -520,8 +521,9 @@ DWORD WINAPI MainThread(LPVOID hModule)
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2] + 7), pal_a, 1, 0);
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[3]), pal_a, 1, 0);
 		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[4]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[5]+2), pal_jmp, 1, 0);
+		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[5] + 2), pal_jmp, 1, 0);
 	}
+	
 	TCHAR szDllPath[MAX_PATH] = { 0 };
 	GetSystemDirectory(szDllPath, MAX_PATH);
 	std::wstring sPath = szDllPath;
@@ -529,29 +531,31 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	while (!vtable)
 	{
 		Sleep(1000);
-		/*
+		
 		DWORD* ptr = (DWORD*)(sigscan(L"MBTL.exe", "\x89\x7d\xf8\x8b\x47", "xxxxx"));
 		if (ptr != nullptr) {
 			ptr = (DWORD*)*(ptr - 1);
 			if (ptr != nullptr) {
 				ptr = (DWORD*)*(ptr);
-				ptr = (DWORD*)*(ptr + 1);
 				if (ptr != nullptr) {
 					ptr = (DWORD*)*(ptr + 1);
+					if (ptr != nullptr) {
+						ptr = (DWORD*)*(ptr + 1);
+					}
 				}
 			}
-			
+
 		}
 		if (ptr != nullptr) {
 			vtable = *(void***)ptr;
 		}
-		*/
-		
+		/*
+
 		vtable = *(void***)(sigscan(
 			sPath + L"\\d3d9.dll",
 			"\xC7\x06\x00\x00\x00\x00\x89\x86\x00\x00\x00\x00\x89\x86",
 			"xx????xx????xx") + 0x2);
-			
+		*/
 	}
 
 	// Hook Present
@@ -564,7 +568,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 
 	DetourAttach(&(LPVOID&)oPresent, Hooked_Present);
 	DetourTransactionCommit();
-
+	
 
 	return false;
 
