@@ -43,7 +43,6 @@ signed int* cameraPosX;
 signed int* cameraPosY;
 float* cameraZoom;
 
-DWORD palNumAddress[5];
 
 // asm codes to patch the exe 
 
@@ -51,10 +50,7 @@ DWORD palNumAddress[5];
 const BYTE je[6] = { 0x0F,0x84,0xC3,0x06,0x00,0x00 };
 const BYTE jmp[6] = { 0xE9,0xC4,0x06,0x00,0x00,0x90 };
 
-//pal
-BYTE pal_a[1] = { 0x1e };
-BYTE pal_jmp[1] = { 0xeb };
-
+int pal_num = 0x1e;
 
 
 
@@ -86,7 +82,6 @@ void DrawRectangle(IDirect3DDevice9* pDevice, const float x1, const float x2, co
 	DWORD pFVF;
 	IDirect3DPixelShader9* pixelShader;
 	IDirect3DBaseTexture9* texture;
-
 	pDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &alphaBlendEnable);
 	pDevice->GetRenderState(D3DRS_DESTBLEND, &destBlend);
 	pDevice->GetRenderState(D3DRS_SRCBLEND, &srcBlend);
@@ -124,7 +119,7 @@ void DrawRectangle(IDirect3DDevice9* pDevice, const float x1, const float x2, co
 	};
 	pDevice->DrawPrimitiveUP(D3DPT_LINESTRIP, 4, outline, sizeof(vertex));
 
-
+	
 	pDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, alphaBlendEnable);
 	pDevice->SetRenderState(D3DRS_DESTBLEND, destBlend);
 	pDevice->SetRenderState(D3DRS_SRCBLEND, srcBlend);
@@ -135,7 +130,6 @@ void DrawRectangle(IDirect3DDevice9* pDevice, const float x1, const float x2, co
 	pDevice->SetTexture(0, texture);
 	if (texture != nullptr)
 		texture->Release();
-
 }
 void drawBox(IDirect3DDevice9* pDevice, int start, int end, DWORD boxAddr, float rx, float ry, BYTE facing, D3DCOLOR innerColor, D3DCOLOR outerColor) {
 	for (int i = start; i < end; i++) {
@@ -235,7 +229,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		text += "T";//invincible to throws
 	}
 	m_font->DrawTextA(NULL, text.c_str(), -1, &rct, DT_CENTER, fontColor);
-
+	
 }
 void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state, bool drawFrame) {
 	signed int* posX, * posX2, * posY, * posY2;
@@ -255,7 +249,6 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 	if (*numBox2 > 0) {
 		DWORD* boxAddress = (DWORD*)(state + 0xc0);
 		if (drawBlue) {
-
 			if (drawBlue == 2) {
 				drawBox(pDevice, 1, (*numBox2 > 8 ? 8 : *numBox2), *boxAddress, rx, ry, *facing, hurtbox_armored_color1, hurtbox_armored_color2);
 			}
@@ -275,7 +268,6 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 	if (drawFrame) {
 		drawFrameData(pDevice, objData, rx, ry);
 	}
-
 }
 
 HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRect, const RECT* pDestRect, HWND hDestWindowOverride, const RGNDATA* pDirtyRegion) {
@@ -437,6 +429,7 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (!base_address) {
 		exit(0);
 	}
+	Sleep(10000);
 	
 	p1_address = *(DWORD*)(sigscan(
 		L"MBTL.exe",
@@ -486,42 +479,28 @@ DWORD WINAPI MainThread(LPVOID hModule)
 				unlockColorSlots = ini["hitbox_viewer"]["unlock_additional_color_slots"] == "1";
 			}
 			if (ini["hitbox_viewer"].has("color_slot_numbers")) {
-				pal_a[0] = std::stoi(ini["hitbox_viewer"]["color_slot_numbers"]);// maximum is 42
+				pal_num = std::stoi(ini["hitbox_viewer"]["color_slot_numbers"]);// maximum is 42
 			}
 		}
 	}
 	if (unlockColorSlots) {
-		palNumAddress[0] = sigscan(
+		BYTE pal[42];
+		for (int i = 0; i < 42; i++) {
+			if (i < pal_num) {
+				pal[i] = 1;
+			}
+			else {
+				pal[i] = 0;
+			}
+		}
+		DWORD address = *(DWORD*)(sigscan(
 			L"MBTL.exe",
-			"\x0A\x72\x30\x8D",
-			"xxxx");
-		palNumAddress[1] = sigscan(
-			L"MBTL.exe",
-			"\x0A\x7C\x41\x8D",
-			"xxxx");
-		palNumAddress[2] = sigscan(
-			L"MBTL.exe",
-			"\x0A\x1B\xC0\xEB",
-			"xxxx");
-		palNumAddress[3] = sigscan(
-			L"MBTL.exe",
-			"\x0A\x7C\x6F\x8D",
-			"xxxx");
-		palNumAddress[4] = sigscan(
-			L"MBTL.exe",
-			"\x0A\x72\x3B\x8D",
-			"xxxx");
-		palNumAddress[5] = sigscan(
-			L"MBTL.exe",
-			"\x84\xc0\x75\x0A\xC7\x05",
-			"xxxxxx");
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[0]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[1]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[2] + 7), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[3]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[4]), pal_a, 1, 0);
-		WriteProcessMemory(phandle, (LPVOID)(palNumAddress[5] + 2), pal_jmp, 1, 0);
+			"\x8a\x84\xc7",
+			"xxx") + 0x3);
+
+		for (int i = 0; i < 0x20; i++) {
+			WriteProcessMemory(phandle, (LPVOID)(address+i*0x30), pal, 42, 0);
+		}
 	}
 	
 	TCHAR szDllPath[MAX_PATH] = { 0 };
