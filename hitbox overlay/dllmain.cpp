@@ -298,7 +298,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 						if (c != 0) {
 							c = *(DWORD*)(obj_addrress + 0x6f4);
 							if (c != 0) {
-								c = *(DWORD*)(obj_addrress + 0x9ac);
+								c = *(DWORD*)(obj_addrress + 0x99c);
 								armor = !c;
 							}
 						}
@@ -308,7 +308,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 
 				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-			obj_addrress = obj_addrress + 0xc3c;
+			obj_addrress = obj_addrress + 0xc34;
 			state = *(DWORD*)(obj_addrress + 0x6ec);
 		}
 		if (*objCount > 0) {
@@ -429,7 +429,6 @@ DWORD WINAPI MainThread(LPVOID hModule)
 	if (!base_address) {
 		exit(0);
 	}
-	Sleep(10000);
 	
 	p1_address = *(DWORD*)(sigscan(
 		L"MBTL.exe",
@@ -484,6 +483,12 @@ DWORD WINAPI MainThread(LPVOID hModule)
 		}
 	}
 	if (unlockColorSlots) {
+		DWORD p = (DWORD)(sigscan(
+			L"MBTL.exe",
+			"\xb9\x20\x00\x00\x00\xc6\x00\x00",
+			"xxxxxxxx") + 0x5);
+		WriteProcessMemory(phandle, (LPVOID)(p), new BYTE[3]{ 0x90,0x90,0x90 }, 3, 0);
+
 		BYTE pal[42];
 		for (int i = 0; i < 42; i++) {
 			if (i < pal_num) {
