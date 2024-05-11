@@ -165,7 +165,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 		}
 	}
 	else {
-		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6e8)) + 0x30);
+		DWORD state = *(DWORD*)((*(DWORD*)(objData + 0x6f8)) + 0x30);
 		DWORD elem = *(DWORD*)(objData + 0x20);
 		DWORD elemTime = *(DWORD*)(objData + 0x30);
 		int i = 0;
@@ -194,7 +194,7 @@ void drawFrameData(IDirect3DDevice9* pDevice, DWORD objData, float rx, float ry)
 	BYTE invFlag = *(BYTE*)(objData + 0x554);
 	BYTE invFlagTime = *(BYTE*)(objData + 0x560);
 
-	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6ec) + 0xAC) + 0xD);
+	BYTE invFlag2 = *(BYTE*)(*(DWORD*)(*(DWORD*)(objData + 0x6fc) + 0xAC) + 0xD);
 
 	BYTE invFlag3 = *(BYTE*)(objData + 0x2a5);
 	BYTE invFlag3_2 = *(BYTE*)(objData + 0x2a7);
@@ -238,7 +238,7 @@ void drawObj(IDirect3DDevice9* pDevice, DWORD objData, int drawBlue, DWORD state
 	posY = (signed int*)(objData + 0x68);
 	posX2 = (signed int*)(objData + 0x70);
 	posY2 = (signed int*)(objData + 0x74);
-	facing = (BYTE*)(objData + 0x6dc);
+	facing = (BYTE*)(objData + 0x6ec);
 	BYTE* numBox1;
 	BYTE* numBox2;
 	numBox1 = (BYTE*)(state + 0xb7);
@@ -276,7 +276,7 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 		pDevice->BeginScene();
 		DWORD state;
 		DWORD obj_addrress = p1_address;
-		state = *(DWORD*)(obj_addrress + 0x6ec);
+		state = *(DWORD*)(obj_addrress + 0x6fc);
 		for (int i = 0; i < 4; i++) {
 			if (state != 0) {
 				DWORD c;
@@ -292,13 +292,13 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 					drawBlue = c != 1;
 				}
 				if (drawBlue == 1) {
-					c = *(DWORD*)(obj_addrress + 0x614);
+					c = *(DWORD*)(obj_addrress + 0x624);
 					if (c > 0) {
-						c = *(DWORD*)(obj_addrress + 0x608);
+						c = *(DWORD*)(obj_addrress + 0x618);
 						if (c != 0) {
-							c = *(DWORD*)(obj_addrress + 0x6f4);
+							c = *(DWORD*)(obj_addrress + 0x704);
 							if (c != 0) {
-								c = *(DWORD*)(obj_addrress + 0x99c);
+								c = *(DWORD*)(obj_addrress + 0x9ac);
 								armor = !c;
 							}
 						}
@@ -308,14 +308,14 @@ HRESULT _stdcall Hooked_Present(IDirect3DDevice9* pDevice, const RECT* pSourceRe
 
 				drawObj(pDevice, obj_addrress, drawBlue + armor, state, true);
 			}
-			obj_addrress = obj_addrress + 0xc34;
-			state = *(DWORD*)(obj_addrress + 0x6ec);
+			obj_addrress = obj_addrress + 0xc44;
+			state = *(DWORD*)(obj_addrress + 0x6fc);
 		}
 		if (*objCount > 0) {
 			for (int i = 0; i < *objCount; i++) {
 				obj_addrress = *(DWORD*)(objList_address + i * 4);
 				if (obj_addrress != 0) {
-					state = *(DWORD*)(obj_addrress + 0x6ec);
+					state = *(DWORD*)(obj_addrress + 0x6fc);
 					if (state != 0) {
 						DWORD c;
 						int drawBlue = 1;
